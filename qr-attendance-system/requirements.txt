@@ -1,0 +1,15 @@
+Flask==2.2.2
+Flask-SQLAlchemy==2.5.1
+Flask-WTF==1.0.0
+Flask-Migrate==3.1.0
+geopy==2.2.0
+python-dotenv==0.19.2
+qrcode==7.3
+Werkzeug==2.2.2
+# Production servers
+gunicorn==21.2.0
+waitress==2.1.2
+# Image processing
+Pillow==10.0.1
+# Login management
+Flask-Login==0.6.3

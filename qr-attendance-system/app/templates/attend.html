@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ department.name }} - Today's Courses</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            padding: 2rem 0;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .course-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .course-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1.5rem;
+        }
+        .course-body {
+            padding: 1.5rem;
+        }
+        .time-badge {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 500;
+            margin: 0.25rem;
+            display: inline-block;
+        }
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 500;
+            margin: 0.25rem;
+        }
+        .status-active {
+            background: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+        }
+        .status-locked {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+        .photo-preview {
+            width: 100%;
+            max-width: 300px;
+            border-radius: 10px;
+            margin: 1rem 0;
+            display: none;
+        }
+        .capture-area {
+            text-align: center;
+        }
+        #video {
+            border-radius: 10px;
+            max-width: 100%;
+        }
+        .btn-capture {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 25px;
+            font-weight: 500;
+        }
+        .btn-capture:hover {
+            background: linear-gradient(135deg, #764ba2, #667eea);
+            color: white;
+        }
+        .location-info {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-book-open"></i> {{ department.name }}</h1>
+            <p class="lead">Today's Available Courses</p>
+            <a href="{{ url_for('departments') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left"></i> Back to Departments
+            </a>
+        </div>
+
+        {% if courses %}
+            {% for course in courses %}
+                <div class="course-card">
+                    <div class="course-header">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h4 class="mb-1">{{ course.course_name }}</h4>
+                                <h5 class="mb-1"><strong>Year: </strong> {{ course.year}}</h5>
+                                <h5><strong>Session: </strong>{{ course.session}}</h5>
+                                <p class="mb-0"><strong>Code: </strong> {{ course.course_code }}</p>
+                                <p class="mb-0"><strong>Instructor Name: </strong>{{ course.instructor.username}}</p>
+                            </div>
+                            <div class="col-md-4 text-md-end">
+                                {% if course.is_active() %}
+                                    <span class="status-badge status-active">
+                                        <i class="fas fa-clock"></i> Active
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge status-locked">
+                                        <i class="fas fa-lock"></i> Locked
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="course-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong><i class="fas fa-map-marker-alt"></i> Location:</strong> {{ course.class_location }}</p>
+                                <div class="time-badges">
+                                    <span class="time-badge">
+                                        <i class="fas fa-play-circle"></i> Start: {{ course.start_time.strftime('%I:%M %p') }}
+                                    </span>
+                                    <span class="time-badge">
+                                        <i class="fas fa-stop-circle"></i> End: {{ course.end_time.strftime('%I:%M %p') }}
+                                    </span>
+                                </div>
+                                <p class="text-muted mt-2">
+                                    <i class="fas fa-users"></i> Attendance: {{ course.attendance_count() }} students
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if course.is_active() %}
+                                    <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#attendanceModal{{ course.id }}">
+                                        <i class="fas fa-check-circle"></i> Mark Attendance
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-secondary w-100" disabled>
+                                        <i class="fas fa-lock"></i> Attendance Closed
+                                    </button>
+                                    <small class="text-muted d-block mt-1">
+                                        Attendance closes 30 minutes after start time
+                                    </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Modal for each course -->
+                <div class="modal fade" id="attendanceModal{{ course.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Mark Attendance - {{ course.course_name }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form id="attendanceForm{{ course.id }}" data-course-id="{{ course.id }}">
+                                <div class="modal-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="student_id{{ course.id }}" class="form-label">
+                                                    <i class="fas fa-id-card"></i> Student ID
+                                                </label>
+                                                <input type="text" class="form-control" id="student_id{{ course.id }}" 
+                                                       name="student_id" required placeholder="Enter your student ID">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="student_name{{ course.id }}" class="form-label">
+                                                    <i class="fas fa-user"></i> Full Name
+                                                </label>
+                                                <input type="text" class="form-control" id="student_name{{ course.id }}" 
+                                                       name="student_name" required placeholder="Enter your full name">
+                                            </div>
+                                            <div class="location-info">
+                                                <h6><i class="fas fa-location-arrow"></i> Location Information</h6>
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <label class="form-label">Latitude</label>
+                                                        <input type="text" class="form-control latitude" readonly>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label">Longitude</label>
+                                                        <input type="text" class="form-control longitude" readonly>
+                                                    </div>
+                                                </div>
+                                                <div class="location-status mt-2">
+                                                    <i class="fas fa-spinner fa-spin"></i> Getting location...
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="capture-area">
+                                                <label class="form-label">
+                                                    <i class="fas fa-camera"></i> Take Photo for Verification
+                                                </label>
+                                                <div class="mb-3">
+                                                    <video id="video{{ course.id }}" width="100%" height="240" autoplay muted></video>
+                                                    <canvas id="canvas{{ course.id }}" style="display: none;"></canvas>
+                                                    <img id="photoPreview{{ course.id }}" class="photo-preview">
+                                                </div>
+                                                <button type="button" class="btn btn-capture capture-btn" data-course-id="{{ course.id }}">
+                                                    <i class="fas fa-camera"></i> Capture Photo
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary retake-btn" data-course-id="{{ course.id }}" style="display: none;">
+                                                    <i class="fas fa-redo"></i> Retake Photo
+                                                </button>
+                                                <input type="hidden" class="photo-path" name="photo_path" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary submit-btn" disabled>
+                                        <i class="fas fa-check"></i> Submit Attendance
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center text-white">
+                <i class="fas fa-calendar-times fa-5x mb-4"></i>
+                <h3>No Courses Today</h3>
+                <p class="lead">There are no courses scheduled for today in {{ department.name }}.</p>
+                <a href="{{ url_for('departments') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left"></i> Back to Departments
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Success/Error Modal -->
+    <div class="modal fade" id="responseModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="responseModalTitle">Attendance Status</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="responseMessage"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentStream = null;
+        let userLocation = null;
+
+        // Get user location when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            getCurrentLocation();
+            setupCameraForAllModals();
+        });
+
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        userLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        };
+                        
+                        // Update all location inputs
+                        document.querySelectorAll('.latitude').forEach(input => {
+                            input.value = userLocation.latitude.toFixed(6);
+                        });
+                        document.querySelectorAll('.longitude').forEach(input => {
+                            input.value = userLocation.longitude.toFixed(6);
+                        });
+                        document.querySelectorAll('.location-status').forEach(status => {
+                            status.innerHTML = '<i class="fas fa-check-circle text-success"></i> Location obtained';
+                        });
+                    },
+                    function(error) {
+                        console.error('Error getting location:', error);
+                        document.querySelectorAll('.location-status').forEach(status => {
+                            status.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Location access denied';
+                        });
+                    }
+                );
+            } else {
+                document.querySelectorAll('.location-status').forEach(status => {
+                    status.innerHTML = '<i class="fas fa-times-circle text-danger"></i> Location not supported';
+                });
+            }
+        }
+
+        function setupCameraForAllModals() {
+            // Setup camera for each modal
+            document.querySelectorAll('[id^="attendanceModal"]').forEach(modal => {
+                modal.addEventListener('shown.bs.modal', function() {
+                    const courseId = this.id.replace('attendanceModal', '');
+                    setupCamera(courseId);
+                });
+
+                modal.addEventListener('hidden.bs.modal', function() {
+                    stopCamera();
+                });
+            });
+
+            // Setup capture buttons
+            document.querySelectorAll('.capture-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const courseId = this.getAttribute('data-course-id');
+                    capturePhoto(courseId);
+                });
+            });
+
+            // Setup retake buttons
+            document.querySelectorAll('.retake-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const courseId = this.getAttribute('data-course-id');
+                    retakePhoto(courseId);
+                });
+            });
+
+            // Setup form submissions
+            document.querySelectorAll('[id^="attendanceForm"]').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const courseId = this.getAttribute('data-course-id');
+                    submitAttendance(courseId);
+                });
+            });
+        }
+
+        function setupCamera(courseId) {
+            const video = document.getElementById(`video${courseId}`);
+            
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user' 
+                } 
+            })
+            .then(stream => {
+                currentStream = stream;
+                video.srcObject = stream;
+                video.play();
+            })
+            .catch(err => {
+                console.error('Error accessing camera:', err);
+                alert('Unable to access camera. Please ensure you have granted camera permissions.');
+            });
+        }
+
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+        }
+
+        function capturePhoto(courseId) {
+            const video = document.getElementById(`video${courseId}`);
+            const canvas = document.getElementById(`canvas${courseId}`);
+            const preview = document.getElementById(`photoPreview${courseId}`);
+            const photoDataInput = document.querySelector(`#attendanceModal${courseId} .photo-path`);
+            const captureBtn = document.querySelector(`[data-course-id="${courseId}"].capture-btn`);
+            const retakeBtn = document.querySelector(`[data-course-id="${courseId}"].retake-btn`);
+
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                alert('Camera is not ready. Please wait a moment and try again.');
+                return;
+            }
+
+            // Set reasonable canvas dimensions (max 640x480)
+            const maxWidth = 640;
+            const maxHeight = 480;
+            let width = video.videoWidth;
+            let height = video.videoHeight;
+            
+            // Calculate scaled dimensions
+            if (width > maxWidth || height > maxHeight) {
+                const ratio = Math.min(maxWidth / width, maxHeight / height);
+                width = width * ratio;
+                height = height * ratio;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // Draw the video frame to canvas with scaling
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, width, height);
+
+            // Convert to compressed JPEG with quality 0.7
+            const photoData = canvas.toDataURL('image/jpeg', 0.7);
+            
+            // Check if the image is still too large
+            const sizeInMB = (photoData.length * 0.75) / (1024 * 1024);
+            if (sizeInMB > 5) {
+                const compressedData = canvas.toDataURL('image/jpeg', 0.5);
+                photoDataInput.value = compressedData;
+                preview.src = compressedData;
+                console.log(`Image compressed to ${((compressedData.length * 0.75) / (1024 * 1024)).toFixed(2)}MB`);
+            } else {
+                photoDataInput.value = photoData;
+                preview.src = photoData;
+                console.log(`Image size: ${sizeInMB.toFixed(2)}MB`);
+            }
+            
+            // Update UI
+            preview.style.display = 'block';
+            video.style.display = 'none';
+            captureBtn.style.display = 'none';
+            retakeBtn.style.display = 'inline-block';
+
+            checkFormCompletion(courseId);
+        }
+
+        function retakePhoto(courseId) {
+            const video = document.getElementById(`video${courseId}`);
+            const preview = document.getElementById(`photoPreview${courseId}`);
+            const photoDataInput = document.querySelector(`#attendanceModal${courseId} .photo-path`);
+            const captureBtn = document.querySelector(`[data-course-id="${courseId}"].capture-btn`);
+            const retakeBtn = document.querySelector(`[data-course-id="${courseId}"].retake-btn`);
+            const submitBtn = document.querySelector(`#attendanceForm${courseId} .submit-btn`);
+
+            photoDataInput.value = '';
+            preview.style.display = 'none';
+            video.style.display = 'block';
+            captureBtn.style.display = 'inline-block';
+            retakeBtn.style.display = 'none';
+            submitBtn.disabled = true;
+        }
+
+        function checkFormCompletion(courseId) {
+            const form = document.getElementById(`attendanceForm${courseId}`);
+            const studentId = form.querySelector('[name="student_id"]').value;
+            const studentName = form.querySelector('[name="student_name"]').value;
+            const photoData = form.querySelector('[name="photo_path"]').value;
+            const submitBtn = form.querySelector('.submit-btn');
+
+            submitBtn.disabled = !(studentId && studentName && photoData && userLocation);
+            
+            if (submitBtn.disabled) {
+                console.log('Form incomplete:', { 
+                    studentId: !!studentId, 
+                    studentName: !!studentName, 
+                    photoData: !!photoData, 
+                    location: !!userLocation 
+                });
+            } else {
+                console.log('Form complete - submit button enabled');
+            }
+        }
+
+        function submitAttendance(courseId) {
+            const form = document.getElementById(`attendanceForm${courseId}`);
+            const submitBtn = form.querySelector('.submit-btn');
+            const originalText = submitBtn.innerHTML;
+
+            console.log('Submitting attendance for course:', courseId);
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+            const formData = new FormData();
+            formData.append('student_id', form.querySelector('[name="student_id"]').value);
+            formData.append('student_name', form.querySelector('[name="student_name"]').value);
+            formData.append('photo_path', form.querySelector('[name="photo_path"]').value);
+            formData.append('latitude', userLocation.latitude);
+            formData.append('longitude', userLocation.longitude);
+
+            console.log('Form data prepared:', {
+                student_id: form.querySelector('[name="student_id"]').value,
+                student_name: form.querySelector('[name="student_name"]').value,
+                photo_size: form.querySelector('[name="photo_path"]').value.length,
+                location: userLocation
+            });
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+            fetch(`/mark_attendance/${courseId}`, {
+                method: 'POST',
+                body: formData,
+                signal: controller.signal
+            })
+            .then(response => {
+                clearTimeout(timeoutId);
+                console.log('Response status:', response.status);
+                if (response.status === 413) {
+                    throw new Error('Image file is too large. Please try taking another photo.');
+                }
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                showResponseModal(data.success, data.message, data.distance);
+                
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById(`attendanceModal${courseId}`)).hide();
+                    form.reset();
+                    retakePhoto(courseId);
+                }
+            })
+            .catch(error => {
+                clearTimeout(timeoutId);
+                console.error('Error:', error);
+                if (error.name === 'AbortError') {
+                    showResponseModal(false, 'Request timed out. Please check your connection and try again.');
+                } else {
+                    showResponseModal(false, error.message || 'An error occurred while submitting attendance. Please try again.');
+                }
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+        }
+
+        function showResponseModal(success, message, distance = null) {
+            const modal = new bootstrap.Modal(document.getElementById('responseModal'));
+            const title = document.getElementById('responseModalTitle');
+            const messageDiv = document.getElementById('responseMessage');
+
+            if (success) {
+                title.textContent = 'Success!';
+                title.className = 'modal-title text-success';
+                let content = `<div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> ${message}
+                </div>`;
+                if (distance) {
+                    content += `<p><i class="fas fa-map-marker-alt"></i> Distance from class: ${distance}</p>`;
+                }
+                messageDiv.innerHTML = content;
+            } else {
+                title.textContent = 'Error';
+                title.className = 'modal-title text-danger';
+                messageDiv.innerHTML = `<div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> ${message}
+                </div>`;
+            }
+
+            modal.show();
+        }
+
+        // Monitor form inputs for completion
+        document.addEventListener('input', function(e) {
+            if (e.target.matches('[name="student_id"], [name="student_name"]')) {
+                const modal = e.target.closest('.modal');
+                const courseId = modal.id.replace('attendanceModal', '');
+                checkFormCompletion(courseId);
+            }
+        });
+    </script>
+</body>
+</html>

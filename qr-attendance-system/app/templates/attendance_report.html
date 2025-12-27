@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Report - {{ course.course_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .report-header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 500;
+            border: none;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .status-on-time {
+            background: #d4edda;
+            color: #155724;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .status-late {
+            background: #fff3cd;
+            color: #856404;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .status-very-late {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .distance-good {
+            color: #28a745;
+        }
+
+        .distance-warning {
+            color: #ffc107;
+        }
+
+        .distance-danger {
+            color: #dc3545;
+        }
+
+        .btn-export {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            transition: all 0.3s;
+        }
+
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            color: white;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media print {
+            body {
+                background: white !important;
+            }
+            .btn, .no-print {
+                display: none !important;
+            }
+            .chart-card, .stats-card, .table-card {
+                box-shadow: none !important;
+                border: 1px solid #dee2e6 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="report-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2">
+                        <i class="fas fa-chart-bar me-3 text-primary"></i>
+                        Attendance Report
+                    </h1>
+                    <h3 class="text-muted mb-3">{{ course.course_name }}</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Course Code:</strong> {{ course.course_code }}</p>
+                            <p class="mb-1"><strong>Location:</strong> {{ course.class_location }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Date:</strong> {{ course.start_time.strftime('%B %d, %Y') }}</p>
+                            <p class="mb-1"><strong>Time:</strong> {{ course.start_time.strftime('%I:%M %p') }} - {{ course.end_time.strftime('%I:%M %p') }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end no-print">
+                    <button class="btn btn-export mb-2" onclick="exportToPDF()">
+                        <i class="fas fa-file-pdf me-2"></i>Export PDF
+                    </button>
+                    <br>
+                    <button class="btn btn-export" onclick="exportToCSV()">
+                        <i class="fas fa-file-csv me-2"></i>Export CSV
+                    </button>
+                    <br><br>
+                    <a href="{{ url_for('view_course') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Courses
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-number text-primary">{{ attendances|length }}</div>
+                    <div class="stats-label">Total Attendees</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    {% set on_time = attendances|selectattr('timestamp', 'lt', course.start_time.replace(microsecond=0) + timedelta(minutes=15))|list|length %}
+                    <div class="stats-number text-success">{{ on_time }}</div>
+                    <div class="stats-label">On Time (≤15 min)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    {% set late = attendances|selectattr('timestamp', 'gt', course.start_time.replace(microsecond=0) + timedelta(minutes=15))|list|length %}
+                    <div class="stats-number text-warning">{{ late }}</div>
+                    <div class="stats-label">Late (>15 min)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-number text-info">{{ ((attendances|length / 50) * 100)|round(1) }}%</div>
+                    <div class="stats-label">Attendance Rate</div>
+                </div>
+            </div>
+        </div>
+
+        
+
+        <!-- Summary Insights -->
+        {% if attendances %}
+        <div class="summary-card">
+            <h5 class="mb-3"><i class="fas fa-lightbulb me-2"></i>Key Insights</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    {% set first_attendance = attendances|min(attribute='timestamp') %}
+                    <p class="mb-2">
+                        <i class="fas fa-clock me-2"></i>
+                        <strong>First Attendance:</strong> {{ first_attendance.student_name }} at {{ first_attendance.timestamp.strftime('%I:%M %p') }}
+                    </p>
+                    {% set avg_distance = attendances|selectattr('distance_from_class', 'defined')|map(attribute='distance_from_class')|list %}
+                    {% if avg_distance %}
+                    <p class="mb-2">
+                        <i class="fas fa-map-marker-alt me-2"></i>
+                        <strong>Average Distance:</strong> {{ (avg_distance|sum / avg_distance|length)|round(1) }}m
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    {% set last_attendance = attendances|max(attribute='timestamp') %}
+                    <p class="mb-2">
+                        <i class="fas fa-hourglass-end me-2"></i>
+                        <strong>Last Attendance:</strong> {{ last_attendance.student_name }} at {{ last_attendance.timestamp.strftime('%I:%M %p') }}
+                    </p>
+                    {% set out_of_range = attendances|selectattr('distance_from_class', 'gt', course.max_distance)|list|length if course.latitude %}
+                    {% if course.latitude %}
+                    <p class="mb-2">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Out of Range:</strong> {{ out_of_range }} students
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Detailed Attendance Table -->
+        <div class="table-card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    {% if attendances %}
+                    <table class="table table-hover mb-0" id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Student ID</th>
+                                <th>Student Name</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                                <th>Distance</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attendance in attendances %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ attendance.student_id }}</strong></td>
+                                <td>{{ attendance.student_name }}</td>
+                                <td>
+                                    {{ attendance.timestamp.strftime('%I:%M %p') }}
+                                    <br>
+                                    <small class="text-muted">{{ attendance.timestamp.strftime('%m/%d/%Y') }}</small>
+                                </td>
+                                <td>
+                                    {% set time_diff = (attendance.timestamp - course.start_time).total_seconds() / 60 %}
+                                    {% if time_diff <= 15 %}
+                                        <span class="status-on-time">
+                                            <i class="fas fa-check me-1"></i>On Time
+                                        </span>
+                                    {% elif time_diff <= 30 %}
+                                        <span class="status-late">
+                                            <i class="fas fa-clock me-1"></i>Late ({{ time_diff|int }}m)
+                                        </span>
+                                    {% else %}
+                                        <span class="status-very-late">
+                                            <i class="fas fa-exclamation me-1"></i>Very Late ({{ time_diff|int }}m)
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if attendance.distance_from_class is not none %}
+                                        {% if attendance.distance_from_class <= course.max_distance %}
+                                            <span class="distance-good">
+                                                <i class="fas fa-check-circle me-1"></i>{{ attendance.distance_from_class|round(0)|int }}m
+                                            </span>
+                                        {% else %}
+                                            <span class="distance-danger">
+                                                <i class="fas fa-exclamation-circle me-1"></i>{{ attendance.distance_from_class|round(0)|int }}m
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if attendance.latitude and attendance.longitude %}
+                                        <small class="text-muted">
+                                            {{ attendance.latitude|round(4) }}, {{ attendance.longitude|round(4) }}
+                                        </small>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No Attendance Data</h4>
+                        <p class="text-muted">No students have marked attendance for this course yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        
+        new Chart(timelineCtx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Attendance Over Time',
+                    data: timelineData,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Student Count'
+                        }
+                    }
+                }
+            }
+        });
+
+        
+
+        new Chart(distanceCtx, {
+            type: 'doughnut',
+            data: distanceData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Export functions
+        function exportToPDF() {
+            window.print();
+        }
+
+        function exportToCSV() {
+            const table = document.getElementById('attendanceTable');
+            if (!table) return;
+
+            let csv = [];
+            const headers = ['#', 'Student ID', 'Student Name', 'Time', 'Status', 'Distance', 'Latitude', 'Longitude'];
+            csv.push(headers.join(','));
+
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = [
+                    cells[0].textContent.trim(),
+                    `"${cells[1].textContent.trim()}"`,
+                    `"${cells[2].textContent.trim()}"`,
+                    `"${cells[3].textContent.trim().replace(/\s+/g, ' ')}"`,
+                    `"${cells[4].textContent.trim()}"`,
+                    cells[5].textContent.trim().replace(/[^\d.]/g, '') || 'N/A',
+                    cells[6].textContent.trim().split(',')[0] || 'N/A',
+                    cells[6].textContent.trim().split(',')[1] || 'N/A'
+                ];
+                csv.push(rowData.join(','));
+            });
+
+            const csvContent = csv.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{{ course.course_code }}_attendance_report_{{ course.start_time.strftime("%Y%m%d") }}.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

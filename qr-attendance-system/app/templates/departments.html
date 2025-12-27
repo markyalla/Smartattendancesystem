@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Department</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            padding: 2rem 0;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+        }
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        .department-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+        }
+        .department-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            color: inherit;
+            text-decoration: none;
+        }
+        .department-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        .department-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        .department-code {
+            font-size: 1rem;
+            color: #666;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+        .department-description {
+            font-size: 0.95rem;
+            color: #777;
+            line-height: 1.5;
+        }
+        .no-departments {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            margin-top: 3rem;
+        }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            .department-card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-graduation-cap"></i> Course Attendance System</h1>
+            <a href="{{ url_for('home') }}" class="btn btn-light btn-sm mb-3"><i class="fas fa-home"></i> Home</a>
+            <p>Select your department to view today's courses</p>
+        </div>
+
+        {% if departments %}
+            <div class="row">
+                {% for department in departments %}
+                    <div class="col-md-6 col-lg-4">
+                        <a href="{{ url_for('attend', department_id=department.id) }}" class="department-card d-block">
+                            <div class="text-center">
+                                <div class="department-icon">
+                                    {% if department.code == 'CS' %}
+                                        <i class="fas fa-laptop-code"></i>
+                                    {% elif department.code == 'MATH' %}
+                                        <i class="fas fa-calculator"></i>
+                                    {% elif department.code == 'PHYS' %}
+                                        <i class="fas fa-atom"></i>
+                                    {% elif department.code == 'CHEM' %}
+                                        <i class="fas fa-flask"></i>
+                                    {% elif department.code == 'BIO' %}
+                                        <i class="fas fa-dna"></i>
+                                    {% elif department.code == 'ENG' %}
+                                        <i class="fas fa-cog"></i>
+                                    {% else %}
+                                        <i class="fas fa-book"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="department-name">{{ department.name }}</div>
+                                <div class="department-code">{{ department.code }}</div>
+                                {% if department.description %}
+                                    <div class="department-description">{{ department.description }}</div>
+                                {% endif %}
+                            </div>
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-departments">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                <p>No departments are currently available.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
