@@ -143,6 +143,64 @@
             max-height: 80vh;
             object-fit: contain;
         }
+
+        /* Mobile-responsive table: stacked view on small screens */
+        @media (max-width: 767.98px) {
+            #attendanceTable thead {
+                display: none;
+            }
+            
+            #attendanceTable tbody tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid #dee2e6;
+                border-radius: 10px;
+                overflow: hidden;
+                background-color: white;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            }
+            
+            #attendanceTable tbody td {
+                display: block;
+                text-align: right;
+                padding: 0.75rem 1rem;
+                border-top: 1px solid #dee2e6;
+                position: relative;
+            }
+            
+            #attendanceTable tbody td:first-child {
+                border-top: none;
+                padding-top: 1rem;
+            }
+            
+            #attendanceTable tbody td:before {
+                content: attr(data-label);
+                float: left;
+                font-weight: 600;
+                color: #495057;
+                text-transform: capitalize;
+            }
+            
+            #attendanceTable tbody td[data-label="Photo"] {
+                text-align: center;
+                padding-bottom: 0;
+            }
+            
+            #attendanceTable tbody td[data-label="Photo"]:before {
+                display: none;
+            }
+            
+            #attendanceTable tbody td[data-label="Actions"] {
+                text-align: center;
+                border-top: none;
+                padding-top: 0;
+            }
+            
+            .photo-thumbnail {
+                width: 80px;
+                height: 80px;
+            }
+        }
     </style>
 </head>
 <body style="background-color: #f8f9fa;">
@@ -259,11 +317,11 @@
             </div>
         </div>
 
-        <!-- Attendees Table -->
-        <div class="attendance-table">
+        <!-- Attendees Table - Responsive -->
+        <div class="attendance-table table-responsive">
             {% if attendances %}
                 <table class="table table-hover mb-0" id="attendanceTable">
-                    <thead>
+                    <thead class="d-none d-md-table-header-group">
                         <tr>
                             <th>Photo</th>
                             <th>Student ID</th>
@@ -277,29 +335,29 @@
                     <tbody>
                         {% for attendance in attendances %}
                             <tr data-verified="{{ attendance.location_verified }}">
-                                <td>
+                                <td data-label="Photo">
                                     {% if attendance.photo_path %}
                                         <img src="{{ url_for('uploaded_file', filename=attendance.photo_path) }}"
                                              alt="Student Photo"
                                              class="photo-thumbnail"
-                                             onclick="showPhotoModal('{{ attendance.student_name | escape }}', '{{ attendance.student_name | e }}')">
+                                             onclick="showPhotoModal('{{ url_for('uploaded_file', filename=attendance.photo_path) }}', '{{ attendance.student_name | escape }}')">
                                     {% else %}
                                         <div class="photo-thumbnail bg-secondary d-flex align-items-center justify-content-center">
-                                            <i class="fas fa-user text-white"></i>
+                                            <i class="fas fa-user text-white fa-2x"></i>
                                         </div>
                                     {% endif %}
                                 </td>
-                                <td><strong>{{ attendance.student_id | default('Unknown') | e }}</strong></td>
-                                <td>{{ attendance.student_name | default('Unknown') | e }}</td>
-                                <td>
+                                <td data-label="Student ID"><strong>{{ attendance.student_id | default('Unknown') | e }}</strong></td>
+                                <td data-label="Student Name">{{ attendance.student_name | default('Unknown') | e }}</td>
+                                <td data-label="Time">
                                     {% if attendance.timestamp %}
                                         <div>{{ attendance.timestamp.strftime('%I:%M %p') }}</div>
-                                        <small class="text-muted">{{ attendance.timestamp.strftime('%b %d, %Y') }}</small>
+                                        <small class="text-muted">{{ attendance.timestamp.strftime('%b %d') }}</small>
                                     {% else %}
                                         <span class="text-muted">Unknown</span>
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td data-label="Distance">
                                     {% if attendance.distance_from_class is not none %}
                                         {% if attendance.location_verified %}
                                             <span class="distance-good">
@@ -318,7 +376,7 @@
                                         </span>
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td data-label="GPS Status">
                                     {% if attendance.location_verified %}
                                         <span class="verified-badge">
                                             <i class="fas fa-map-marker-alt me-1"></i>Verified
@@ -329,14 +387,14 @@
                                         </span>
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td data-label="Actions">
                                     {% set time_str = attendance.timestamp.strftime('%B %d, %Y at %I:%M %p') if attendance.timestamp else 'Unknown' %}
                                     {% set distance_str = '%.0f'|format(attendance.distance_from_class) if attendance.distance_from_class is not none else 'N/A' %}
                                     {% set lat_str = '%.6f'|format(attendance.latitude) if attendance.latitude else 'N/A' %}
                                     {% set lng_str = '%.6f'|format(attendance.longitude) if attendance.longitude else 'N/A' %}
                                     {% set verified_str = 'Yes' if attendance.location_verified else 'No' %}
                                     
-                                    <button class="btn btn-sm btn-outline-primary"
+                                    <button class="btn btn-sm btn-outline-primary w-100 mt-1"
                                             data-student-id="{{ attendance.student_id | e }}"
                                             data-student-name="{{ attendance.student_name | e }}"
                                             data-time="{{ time_str | e }}"

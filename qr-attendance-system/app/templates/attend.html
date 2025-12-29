@@ -92,6 +92,14 @@
             padding: 1rem;
             margin: 1rem 0;
         }
+        .location-status {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .location-retry-btn {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -114,6 +122,7 @@
                                 <h5 class="mb-1"><strong>Year: </strong> {{ course.year}}</h5>
                                 <h5><strong>Session: </strong>{{ course.session}}</h5>
                                 <p class="mb-0"><strong>Code: </strong> {{ course.course_code }}</p>
+                                <p class="mb-0"><strong>Title: </strong>{{ course.instructor.title}}</p>
                                 <p class="mb-0"><strong>Instructor Name: </strong>{{ course.instructor.username}}</p>
                             </div>
                             <div class="col-md-4 text-md-end">
@@ -201,9 +210,12 @@
                                                         <input type="text" class="form-control longitude" readonly>
                                                     </div>
                                                 </div>
-                                                <div class="location-status mt-2">
+                                                <div class="location-status">
                                                     <i class="fas fa-spinner fa-spin"></i> Getting location...
                                                 </div>
+                                                <button type="button" class="btn btn-sm btn-outline-primary location-retry-btn" style="display: none;">
+                                                    <i class="fas fa-redo"></i> Retry Location
+                                                </button>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
@@ -212,7 +224,7 @@
                                                     <i class="fas fa-camera"></i> Take Photo for Verification
                                                 </label>
                                                 <div class="mb-3">
-                                                    <video id="video{{ course.id }}" width="100%" height="240" autoplay muted></video>
+                                                    <video id="video{{ course.id }}" width="100%" height="240" autoplay muted playsinline></video>
                                                     <canvas id="canvas{{ course.id }}" style="display: none;"></canvas>
                                                     <img id="photoPreview{{ course.id }}" class="photo-preview">
                                                 </div>
@@ -272,57 +284,147 @@
     <script>
         let currentStream = null;
         let userLocation = null;
+        let locationAttempts = 0;
+        const MAX_LOCATION_ATTEMPTS = 3;
 
         // Get user location when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            getCurrentLocation();
             setupCameraForAllModals();
+            // Don't get location immediately - wait for modal open
         });
 
-        function getCurrentLocation() {
-            if (navigator.geolocation) {
+        function getCurrentLocation(forceRetry = false) {
+            if (userLocation && !forceRetry) {
+                updateLocationUI(true);
+                return Promise.resolve(userLocation);
+            }
+
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    const error = 'Geolocation is not supported by your browser';
+                    updateLocationUI(false, error);
+                    reject(error);
+                    return;
+                }
+
+                locationAttempts++;
+                updateLocationUI(null, 'Getting location...');
+
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 15000, // Increased timeout for mobile
+                    maximumAge: 30000 // Allow cached location up to 30 seconds old
+                };
+
                 navigator.geolocation.getCurrentPosition(
                     function(position) {
                         userLocation = {
                             latitude: position.coords.latitude,
-                            longitude: position.coords.longitude
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
                         };
                         
-                        // Update all location inputs
-                        document.querySelectorAll('.latitude').forEach(input => {
-                            input.value = userLocation.latitude.toFixed(6);
-                        });
-                        document.querySelectorAll('.longitude').forEach(input => {
-                            input.value = userLocation.longitude.toFixed(6);
-                        });
-                        document.querySelectorAll('.location-status').forEach(status => {
-                            status.innerHTML = '<i class="fas fa-check-circle text-success"></i> Location obtained';
-                        });
+                        locationAttempts = 0; // Reset on success
+                        updateLocationUI(true);
+                        resolve(userLocation);
                     },
                     function(error) {
-                        console.error('Error getting location:', error);
-                        document.querySelectorAll('.location-status').forEach(status => {
-                            status.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Location access denied';
-                        });
-                    }
+                        console.error('Geolocation error:', error);
+                        let errorMessage = 'Unable to get location';
+                        
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = 'Location information unavailable. Please check your device settings.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = 'Location request timed out. Please try again.';
+                                break;
+                        }
+                        
+                        updateLocationUI(false, errorMessage);
+                        
+                        // Retry logic for timeout errors
+                        if (error.code === error.TIMEOUT && locationAttempts < MAX_LOCATION_ATTEMPTS) {
+                            setTimeout(() => {
+                                getCurrentLocation(true).then(resolve).catch(reject);
+                            }, 2000);
+                        } else {
+                            reject(errorMessage);
+                        }
+                    },
+                    options
                 );
-            } else {
-                document.querySelectorAll('.location-status').forEach(status => {
-                    status.innerHTML = '<i class="fas fa-times-circle text-danger"></i> Location not supported';
+            });
+        }
+
+        function updateLocationUI(success, message = null) {
+            const latInputs = document.querySelectorAll('.latitude');
+            const lonInputs = document.querySelectorAll('.longitude');
+            const statusDivs = document.querySelectorAll('.location-status');
+            const retryBtns = document.querySelectorAll('.location-retry-btn');
+
+            if (success && userLocation) {
+                latInputs.forEach(input => {
+                    input.value = userLocation.latitude.toFixed(6);
                 });
+                lonInputs.forEach(input => {
+                    input.value = userLocation.longitude.toFixed(6);
+                });
+                statusDivs.forEach(status => {
+                    const accuracyText = userLocation.accuracy ? ` (±${Math.round(userLocation.accuracy)}m)` : '';
+                    status.innerHTML = `<i class="fas fa-check-circle text-success"></i> Location obtained${accuracyText}`;
+                });
+                retryBtns.forEach(btn => btn.style.display = 'none');
+                
+                // Enable submit button check
+                document.querySelectorAll('[id^="attendanceForm"]').forEach(form => {
+                    const courseId = form.getAttribute('data-course-id');
+                    checkFormCompletion(courseId);
+                });
+            } else if (success === false) {
+                latInputs.forEach(input => input.value = '');
+                lonInputs.forEach(input => input.value = '');
+                statusDivs.forEach(status => {
+                    status.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> ${message || 'Location unavailable'}`;
+                });
+                retryBtns.forEach(btn => btn.style.display = 'inline-block');
+            } else {
+                // Loading state
+                statusDivs.forEach(status => {
+                    status.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${message || 'Getting location...'}`;
+                });
+                retryBtns.forEach(btn => btn.style.display = 'none');
             }
         }
 
         function setupCameraForAllModals() {
-            // Setup camera for each modal
+            // Setup modal event handlers
             document.querySelectorAll('[id^="attendanceModal"]').forEach(modal => {
                 modal.addEventListener('shown.bs.modal', function() {
                     const courseId = this.id.replace('attendanceModal', '');
+                    
+                    // Get location when modal opens (better for mobile permissions)
+                    getCurrentLocation().catch(err => {
+                        console.error('Location error on modal open:', err);
+                    });
+                    
                     setupCamera(courseId);
                 });
 
                 modal.addEventListener('hidden.bs.modal', function() {
                     stopCamera();
+                });
+            });
+
+            // Setup retry location buttons
+            document.querySelectorAll('.location-retry-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    getCurrentLocation(true).catch(err => {
+                        console.error('Location retry failed:', err);
+                    });
                 });
             });
 
@@ -355,20 +457,28 @@
         function setupCamera(courseId) {
             const video = document.getElementById(`video${courseId}`);
             
-            navigator.mediaDevices.getUserMedia({ 
+            const constraints = {
                 video: { 
                     width: { ideal: 640 },
                     height: { ideal: 480 },
-                    facingMode: 'user' 
-                } 
-            })
+                    facingMode: 'user'
+                }
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
             .then(stream => {
                 currentStream = stream;
                 video.srcObject = stream;
-                video.play();
+                
+                // Ensure video plays on mobile
+                video.onloadedmetadata = function() {
+                    video.play().catch(err => {
+                        console.error('Video play error:', err);
+                    });
+                };
             })
             .catch(err => {
-                console.error('Error accessing camera:', err);
+                console.error('Camera access error:', err);
                 alert('Unable to access camera. Please ensure you have granted camera permissions.');
             });
         }
@@ -393,13 +503,11 @@
                 return;
             }
 
-            // Set reasonable canvas dimensions (max 640x480)
             const maxWidth = 640;
             const maxHeight = 480;
             let width = video.videoWidth;
             let height = video.videoHeight;
             
-            // Calculate scaled dimensions
             if (width > maxWidth || height > maxHeight) {
                 const ratio = Math.min(maxWidth / width, maxHeight / height);
                 width = width * ratio;
@@ -409,27 +517,21 @@
             canvas.width = width;
             canvas.height = height;
 
-            // Draw the video frame to canvas with scaling
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, width, height);
 
-            // Convert to compressed JPEG with quality 0.7
             const photoData = canvas.toDataURL('image/jpeg', 0.7);
             
-            // Check if the image is still too large
             const sizeInMB = (photoData.length * 0.75) / (1024 * 1024);
             if (sizeInMB > 5) {
                 const compressedData = canvas.toDataURL('image/jpeg', 0.5);
                 photoDataInput.value = compressedData;
                 preview.src = compressedData;
-                console.log(`Image compressed to ${((compressedData.length * 0.75) / (1024 * 1024)).toFixed(2)}MB`);
             } else {
                 photoDataInput.value = photoData;
                 preview.src = photoData;
-                console.log(`Image size: ${sizeInMB.toFixed(2)}MB`);
             }
             
-            // Update UI
             preview.style.display = 'block';
             video.style.display = 'none';
             captureBtn.style.display = 'none';
@@ -462,25 +564,18 @@
             const submitBtn = form.querySelector('.submit-btn');
 
             submitBtn.disabled = !(studentId && studentName && photoData && userLocation);
-            
-            if (submitBtn.disabled) {
-                console.log('Form incomplete:', { 
-                    studentId: !!studentId, 
-                    studentName: !!studentName, 
-                    photoData: !!photoData, 
-                    location: !!userLocation 
-                });
-            } else {
-                console.log('Form complete - submit button enabled');
-            }
         }
 
         function submitAttendance(courseId) {
+            // Check location one more time before submitting
+            if (!userLocation) {
+                showResponseModal(false, 'Location not available. Please click "Retry Location" and try again.');
+                return;
+            }
+
             const form = document.getElementById(`attendanceForm${courseId}`);
             const submitBtn = form.querySelector('.submit-btn');
             const originalText = submitBtn.innerHTML;
-
-            console.log('Submitting attendance for course:', courseId);
 
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
@@ -492,13 +587,6 @@
             formData.append('latitude', userLocation.latitude);
             formData.append('longitude', userLocation.longitude);
 
-            console.log('Form data prepared:', {
-                student_id: form.querySelector('[name="student_id"]').value,
-                student_name: form.querySelector('[name="student_name"]').value,
-                photo_size: form.querySelector('[name="photo_path"]').value.length,
-                location: userLocation
-            });
-
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000);
 
@@ -509,7 +597,6 @@
             })
             .then(response => {
                 clearTimeout(timeoutId);
-                console.log('Response status:', response.status);
                 if (response.status === 413) {
                     throw new Error('Image file is too large. Please try taking another photo.');
                 }
@@ -519,7 +606,6 @@
                 return response.json();
             })
             .then(data => {
-                console.log('Response data:', data);
                 showResponseModal(data.success, data.message, data.distance);
                 
                 if (data.success) {

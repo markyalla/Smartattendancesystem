@@ -94,6 +94,9 @@
                                         <tr>
                                             <th>ID</th>
                                             <th>Username</th>
+                                            <th>Title</th>
+                                            <th>Fullname</th>
+                                            <th>Email</th>
                                             <th>Role</th>
                                             <th>Courses</th>
                                             <th>Actions</th>
@@ -107,6 +110,24 @@
                                                 <div class="d-flex align-items-center">
                                                     <i class="fas fa-user-circle me-2 text-primary"></i>
                                                     {{ user.username }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-user-circle me-2 text-primary"></i>
+                                                    {{ user.title }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-user-circle me-2 text-primary"></i>
+                                                    {{ user.fullname }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-user-circle me-2 text-primary"></i>
+                                                    {{ user.email }}
                                                 </div>
                                             </td>
                                             <td>

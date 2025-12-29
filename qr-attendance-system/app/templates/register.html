@@ -14,11 +14,43 @@
                 <div class="card shadow mt-5">  
                     <div class="card-body p-4">  
                         <h2 class="card-title text-center mb-4">Register</h2>  
+
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                          {% if messages %}
+                            <div class="mb-3">
+                              {% for category, message in messages %}
+                                <div class="alert alert-{{ 'warning' if category=='danger' else category }} alert-dismissible fade show" role="alert">
+                                  {{ message }}
+                                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          {% endif %}
+                        {% endwith %}
+
                         <form method="POST" action="{{ url_for('register') }}">  
                             
                             <div class="form-group mb-3">  
                                 <label for="username" class="form-label">Username</label>  
                                 <input type="text" class="form-control" id="username" name="username" required>  
+                                {% with messages = get_flashed_messages(category_filter=["username"]) %}  
+                                    {% if messages %}  
+                                        <span class="text-danger small mt-1 d-block">{{ messages[0] }}</span>  
+                                    {% endif %}  
+                                {% endwith %}  
+                            </div>
+                            <div class="form-group mb-3">  
+                                <label for="title" class="form-label">Title</label>  
+                                <input type="text" class="form-control" id="title" name="title" required>  
+                                {% with messages = get_flashed_messages(category_filter=["title"]) %}  
+                                    {% if messages %}  
+                                        <span class="text-danger small mt-1 d-block">{{ messages[0] }}</span>  
+                                    {% endif %}  
+                                {% endwith %}  
+                            </div>
+                            <div class="form-group mb-3">  
+                                <label for="fullname" class="form-label">Fullname</label>  
+                                <input type="text" class="form-control" id="fullname" name="fullname" required>  
                                 {% with messages = get_flashed_messages(category_filter=["username"]) %}  
                                     {% if messages %}  
                                         <span class="text-danger small mt-1 d-block">{{ messages[0] }}</span>  

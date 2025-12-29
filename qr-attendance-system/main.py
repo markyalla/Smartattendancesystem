@@ -11,9 +11,10 @@ import base64
 import io
 from functools import wraps
 import math
+from sqlalchemy import text
 
 
-app = Flask(__name__, template_folder='app/templates')
+app = Flask(__name__, template_folder='app/templates',static_folder="app/static")
 app.config['SECRET_KEY'] = 'savethebest123boom'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -32,6 +33,9 @@ login_manager.login_view = 'login'
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    title = db.Column(db.String(120), nullable=True)
+    fullname = db.Column(db.String(120), nullable=True)
+    email = db.Column(db.String(120), unique=True)
     password = db.Column(db.String(120), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='instructor')
     courses = db.relationship('Course', backref='instructor', lazy=True)
@@ -698,18 +702,36 @@ def departments():
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
+        title = request.form.get('title')
+        fullname = request.form.get('fullname')
+        email = request.form.get('email')
         password = request.form.get('password')
         
-        if not username or not password:
-            flash('Username and password are required.', 'danger')
+        if not username:
+            flash('Username is required.', 'danger')
+            return redirect(url_for('register'))
+        if not title:
+            flash('Title is required.', 'danger')
+            return redirect(url_for('register'))
+        if not fullname:
+            flash('fullname is required.', 'danger')
+            return redirect(url_for('register'))        
+        if not email:
+            flash('Email is required.', 'danger')
+            return redirect(url_for('register'))
+        if not password:
+            flash('Password is required.', 'danger')
             return redirect(url_for('register'))
     
         if User.query.filter_by(username=username).first():
             flash('Username already exists.', 'danger')
             return redirect(url_for('register'))
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists.', 'danger')
+            return redirect(url_for('register'))
     
         hashed_password = generate_password_hash(password)
-        new_user = User(username=username, password=hashed_password)
+        new_user = User(username=username, title=title, fullname=fullname, email=email, password=hashed_password)
         db.session.add(new_user)
         db.session.commit()
         flash('Registration successful! Please login.', 'success')
@@ -1106,12 +1128,24 @@ def logout():
 def init_db():
     with app.app_context():
         db.create_all()
+
+        # Ensure 'email' column exists on user table (SQLite)
+        try:
+            result = db.session.execute(text("PRAGMA table_info(user)"))
+            columns = [row[1] for row in result]
+            if 'email' not in columns:
+                db.session.execute(text("ALTER TABLE user ADD COLUMN email VARCHAR(120)"))
+                db.session.commit()
+        except Exception as e:
+            print(f"Could not ensure email column on user table: {e}")
         
         # Create admin user if it doesn't exist
         admin_user = User.query.filter_by(username='admin').first()
         if not admin_user:
-            admin_user = User(username='admin', role='admin')
+            admin_user = User(username='admin', title='Mr.', fullname= 'Administrator', email='superadmin@gmail.com', role='admin')
+
             admin_user.set_password('admin123')
+            
             db.session.add(admin_user)
             db.session.commit()
             print("Admin user created! Username: admin, Password: admin123")
